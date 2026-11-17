@@ -17,12 +17,12 @@ Báo cáo đầy đủ: [`Report.md`](Report.md).
 ```
 .
 ├── MergeSortCutOff.java   Cài đặt mergesort + insertion sort (tự code)
-├── DataGen.java           Sinh bộ dữ liệu thí nghiệm
-├── CutoffBenchmark.java   Đo thời gian và thống kê
+├── Data.java              Sinh bộ dữ liệu thí nghiệm
+├── Benchmark.java         Đo thời gian và thống kê
 ├── plot_results.py        Vẽ đồ thị từ kết quả đo
 ├── data/                  20 file dữ liệu (5 kiểu × 4 kích thước)
 ├── results/               Kết quả đo (CSV), cấu hình máy và đồ thị
-└── BAO_CAO.md             Báo cáo thí nghiệm
+└── Report.md             Báo cáo thí nghiệm
 ```
 
 ## Cách chạy lại thí nghiệm
@@ -35,14 +35,14 @@ javac *.java
 java DataGen
 
 # 3. Đo thời gian: 25 lần đo, 5 vòng warm-up (khoảng 10–30 phút tuỳ vào cấu hình máy)
-java -Xms2g -Xmx2g CutoffBenchmark
+java -Xms2g -Xmx2g Benchmark
 
 #    Bản chạy thử nhanh: 3 lần đo, 2 vòng warm-up
-java CutoffBenchmark 3 2
+java Benchmark 3 2
 
 # 4. Vẽ đồ thị vào results/
 pip3 install matplotlib
-python3 plot_results.py
+python3 plot.py
 ```
 
 Tham số đầy đủ của `Benchmark`: `[soLanDo] [soVongWarmup] [thuMucData] [thuMucKetQua]`, mặc định `25 5 data results`.
@@ -99,7 +99,7 @@ Trên máy thí nghiệm (Apple Silicon, 10 nhân, macOS 26.7.3, Java 25.0.2), v
 - Vùng tối ưu khoảng 12–20, nhưng chỉ nhanh hơn CUTOFF = 10 khoảng 0–3%.
 - Không có CUTOFF tốt nhất cho mọi kiểu dữ liệu: dữ liệu đảo ngược cần CUTOFF nhỏ, dữ liệu gần sắp xếp hưởng lợi từ CUTOFF lớn.
 
-Chi tiết và phân tích xem trong [`BAO_CAO.md`](BAO_CAO.md).
+Chi tiết và phân tích xem trong [`Report.md`](Report.md).
 
 ## Ghi chú về việc sử dụng AI hỗ trợ thí nghiệm
 
