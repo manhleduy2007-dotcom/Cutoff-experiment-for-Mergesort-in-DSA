@@ -1,13 +1,5 @@
-# [Thí nghiệm tìm giá trị CUTOFF tối ưu cho Mergesort]
+# Thí nghiệm tìm giá trị CUTOFF tối ưu cho Mergesort
 
-![alt text](image.png)
-
-Merge Sort là thuật toán chia để trị : chia mảng thành các mảng con nhỏ hơn và sau đó sử dụng đệ quy xuống còn 1 phần tử: 
-Vấn đề mà MergeSort gặp phải => Việc sử dụng đệ quy ở các mảng nhỏ rất là lãng phí. 
-Bàn về độ phức tạp: Về lý thuyết, Insertion Sort sao lại nhanh hơn mảng nhỏ: 
-- Merge Sort và Quick Sort sẽ sử dụng độ phức tạp O (n log n) và Insertion Sort sử dụng độ phức tạp là O (n^2). 
-- Các con số CUTOFF => đây đều khong phải con số toán học chính xác mà là giá trị thực nghiệm => Đơn giản là người ta thử nhiều giá trị rồi chọn gía trị cho kết quả nhanh nhất mà thôi. 
-- Các con số Cutoff như 7 và 10 chỉ đại diện cho thế hệ trước và thế hệ sau này khi có máy tính hiện đại hơn (có cache lớn hơn + dự đonas rẽ nhánh và các vòng lặp đơn giản như Insertion Sort chạy hiệu quả hơn)
 Mergesort top-down có một cải tiến quen thuộc: khi đoạn con có độ dài không quá `CUTOFF`, chuyển sang insertion sort thay vì tiếp tục đệ quy. Giáo trình nhắc đến hai giá trị CUTOFF là 7 (cũ) và 10 (mới). Thí nghiệm này đo thời gian chạy với 26 giá trị CUTOFF khác nhau để tìm giá trị phù hợp nhất trên một cấu hình máy cụ thể.
 
 Báo cáo đầy đủ: [`Report.md`](Report.md).
@@ -16,38 +8,67 @@ Báo cáo đầy đủ: [`Report.md`](Report.md).
 
 ```
 .
-├── MergeSortCutOff.java   Cài đặt mergesort + insertion sort (tự code)
+├── MergeSortCutOff.java   Cài đặt mergesort + insertion sort (tự viết từ slide bài giảng)
 ├── Data.java              Sinh bộ dữ liệu thí nghiệm
 ├── Benchmark.java         Đo thời gian và thống kê
-├── plot_results.py        Vẽ đồ thị từ kết quả đo
+├── plot.py                Vẽ đồ thị từ kết quả đo
+├── compare.py             So sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng
 ├── data/                  20 file dữ liệu (5 kiểu × 4 kích thước)
-├── results/               Kết quả đo (CSV), cấu hình máy và đồ thị
+├── results/               Kết quả thí nghiệm chính (CSV), cấu hình máy và đồ thị
+├── results_single/        Kết quả thí nghiệm đối chứng (không gộp bản sao)
 └── Report.md             Báo cáo thí nghiệm
 ```
 
-## Cách chạy lại thí nghiệm
+## Yêu cầu
+
+- JDK 17 trở lên (thí nghiệm gốc chạy trên Java 25.0.2)
+- Python 3 và thư viện `matplotlib` (cho bước vẽ đồ thị)
+
+## Cách chạy lại thí nghiệm chính
 
 ```bash
 # 1. Biên dịch
 javac *.java
 
 # 2. Sinh dữ liệu vào data/ (seed cố định nên luôn ra cùng một bộ dữ liệu)
-java DataGen
+java Data
 
-# 3. Đo thời gian: 25 lần đo, 5 vòng warm-up (khoảng 10–30 phút tuỳ vào cấu hình máy)
-java -Xms2g -Xmx2g Benchmark
+# 3. Đo thời gian: 25 lần đo, 5 vòng warm-up, ghi vào results/ (khoảng 20–30 phút)
+java -Xms2g -Xmx2g Benchmark 25 5 data results
 
-#    Bản chạy thử nhanh: 3 lần đo, 2 vòng warm-up
-java Benchmark 3 2
+#    Bản chạy thử nhanh: 3 lần đo, 2 vòng warm-up, ghi vào thư mục riêng
+java Benchmark 3 2 data results_test
 
 # 4. Vẽ đồ thị vào results/
 pip3 install matplotlib
 python3 plot.py
 ```
 
-Tham số đầy đủ của `Benchmark`: `[soLanDo] [soVongWarmup] [thuMucData] [thuMucKetQua]`, mặc định `25 5 data results`.
+Tham số của `Benchmark`: `[soLanDo] [soVongWarmup] [thuMucData] [thuMucKetQua]`, mặc định `25 5 data results`.
+
+> **Lưu ý:** chương trình ghi đè `raw.csv`, `summary.csv` và `environment.txt` trong thư mục kết quả. Mọi lần chạy thử hoặc chạy đối chứng phải dùng thư mục kết quả khác `results`, nếu không số liệu của thí nghiệm chính sẽ bị mất.
 
 Khi đo chính thức nên cắm sạc, đóng các ứng dụng khác và không dùng máy trong lúc chạy.
+
+## Cách chạy lại thí nghiệm đối chứng
+
+Thí nghiệm đối chứng kiểm tra tác dụng của việc gộp nhiều bản sao trong một lần bấm giờ (xem mục 4.3d của báo cáo), bằng cách đo lại khi mỗi lần bấm giờ chỉ sắp xếp một mảng.
+
+1. Tạm sửa hai hằng số trong `Benchmark.java`:
+   ```java
+   static final int[] SIZES = {1_000, 10_000};
+   static final int MIN_ELEMENTS_PER_MEASUREMENT = 1;
+   ```
+2. Biên dịch và chạy vào thư mục riêng:
+   ```bash
+   javac *.java
+   java Benchmark 25 5 data results_single
+   ```
+3. Sửa hai hằng số về giá trị ban đầu (`{1_000, 10_000, 100_000, 1_000_000}` và `200_000`), rồi `javac *.java` lại.
+4. So sánh độ dao động (độ lệch chuẩn chia trung vị) giữa hai thí nghiệm:
+   ```bash
+   python3 compare.py
+   ```
 
 ## Thiết kế thí nghiệm
 
@@ -61,16 +82,16 @@ Khi đo chính thức nên cắm sạc, đóng các ứng dụng khác và khôn
 
 Các biện pháp để kết quả đo đáng tin:
 
-- **Cùng dữ liệu cho mọi CUTOFF**: mỗi lần đo copy mảng gốc sang mảng làm việc; thời gian copy không được tính.
 - **Warm-up**: chạy bỏ 5 vòng đầu để JIT của Java biên dịch xong mã trước khi đo.
+- **Bấm giờ bằng `System.nanoTime()` và tách thời gian copy mảng**: mỗi lần đo copy mảng gốc sang mảng làm việc trước khi bấm giờ, nên mọi CUTOFF được đo trên cùng dữ liệu và thời gian copy không bị tính.
+- **Kéo dài khoảng đo cho mảng nhỏ**: mỗi lần bấm giờ sắp xếp nhiều bản sao (tổng cộng ít nhất 200.000 phần tử) rồi chia trung bình, để sai số của đồng hồ không đáng kể. Thí nghiệm đối chứng cho thấy với N = 1.000, độ dao động giảm từ 70–85% xuống 2–3%.
+- **Lặp 25 lần và dùng trung vị** (median) làm số liệu chính, vì ít bị ảnh hưởng bởi các lần đo bất thường.
 - **Xáo thứ tự CUTOFF** ở mỗi vòng đo, để nhiễu hệ thống (nhiệt độ CPU, dọn bộ nhớ) không dồn về một giá trị.
-- **Gộp nhiều lần sắp xếp với mảng nhỏ**: mỗi lần bấm giờ sắp xếp tổng cộng ít nhất 200.000 phần tử, rồi chia trung bình.
-- **Dùng trung vị** (median) làm số liệu chính, vì ít bị ảnh hưởng bởi các lần đo bất thường.
 - **Kiểm tra tính đúng**: so kết quả với `Arrays.sort` ở vòng warm-up đầu và kiểm tra mảng đã sắp xếp sau mỗi lần đo (ngoài thời gian đo).
 
 ## Định dạng kết quả
 
-**`results/raw.csv`**: mỗi dòng là một lần đo.
+**`raw.csv`**: mỗi dòng là một lần đo.
 
 | Cột | Ý nghĩa |
 |---|---|
@@ -80,16 +101,16 @@ Các biện pháp để kết quả đo đáng tin:
 | `run` | Thứ tự lần đo (1–25) |
 | `time_ns` | Thời gian một lần sắp xếp, tính bằng nano giây |
 
-**`results/summary.csv`**: mỗi dòng là một tổ hợp (kiểu dữ liệu, N, CUTOFF).
+**`summary.csv`**: mỗi dòng là một tổ hợp (kiểu dữ liệu, N, CUTOFF).
 
 | Cột | Ý nghĩa |
 |---|---|
 | `median_ms`, `mean_ms`, `std_ms`, `min_ms` | Trung vị, trung bình, độ lệch chuẩn, nhỏ nhất (mili giây) |
 | `ratio_vs_baseline` | Trung vị chia cho trung vị tại CUTOFF = 1. Nhỏ hơn 1 nghĩa là nhanh hơn mergesort thuần |
 
-**`results/environment.txt`**: hệ điều hành, phiên bản Java, số nhân CPU, tham số thí nghiệm.
+**`environment.txt`**: hệ điều hành, phiên bản Java, số nhân CPU, tham số thí nghiệm.
 
-**Đồ thị**: `results/cutoff_<kiểu>.png` (thời gian tương đối theo CUTOFF, mỗi N một đường) và `results/runtime_vs_n.png` (thời gian theo N, thang log-log).
+Cả `results/` và `results_single/` đều có ba file trên. Riêng `results/` có thêm đồ thị: `cutoff_<kiểu>.png` (thời gian tương đối theo CUTOFF, mỗi N một đường) và `runtime_vs_n.png` (thời gian theo N, thang log-log).
 
 ## Kết quả tóm tắt
 
@@ -101,6 +122,6 @@ Trên máy thí nghiệm (Apple Silicon, 10 nhân, macOS 26.7.3, Java 25.0.2), v
 
 Chi tiết và phân tích xem trong [`Report.md`](Report.md).
 
-## Ghi chú về việc sử dụng AI hỗ trợ thí nghiệm
+## Ghi chú về việc sử dụng AI
 
-`Data.java`, `Benchmark.java`, `results.py` và README này được viết với sự hỗ trợ của AI, trong phạm vi đề bài cho phép. `MergeSortCutOff.java` được tự cài đặt và tự code từ nội dung bài giảng.
+Đề bài cho phép dùng AI để thảo luận, viết script và xây dựng bộ dữ liệu. `Data.java`, `Benchmark.java`, `plot.py`, `compare.py` và README này được viết với sự hỗ trợ của AI. `MergeSortCutOff.java` được tự cài đặt từ nội dung bài giảng. Chi tiết về phần AI hỗ trợ trong báo cáo xem phụ lục của `Report.md`; log trò chuyện nằm trong `ai-chat-log/`.
