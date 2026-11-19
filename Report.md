@@ -53,22 +53,80 @@ Mỗi kiểu có 4 kích thước N = 1.000; 10.000; 100.000; 1.000.000, tổng 
 
 ### 4.3. Quy trình đo
 
-a. Giá trị CUTOFF được chia thành 2 vùng: 
+**a. Chọn các giá trị CUTOFF cần kiểm tra:**
    * Vùng dày chạy từ `1-20 chứa 2 giá trị 7 và 10` có thể show ra đáy chữ U và cần độ phân giải cao để thấy chính xác chỗ nhảy bậc. 
    * Vùng thưa `24, 28, 32, 40, 48, 64` chỉ cần xác nhận đường cong đi lên lại. Đoạn con bị chia đôi nên càng về sau các bậc càng cách xa nhau (Dừng CUTOFF ở 64 vì CUTOFF 64 đã chậm hơn cả Mergesort thuần)
-b. Năm vòng warm-up rồi 25 lần đo cho mỗi tổ hợp: 
+
+**b.Warm up để không chịu ảnh hưởng của JIT**
    * Java không chạy code ở tốc độ tối đau ngay từ đầu mà qua 2 giai đoạn: 
       1. Lúc mới chạy thì JVM (Máy ảo của Java) đọc bytecode trong file `.class` và thông dịch từng lệnh một (tốc độ chậm).
-      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên (quá tải) sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compliatio, biên dịch đúng lúc cần).
+      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên (quá tải) sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compliation, biên dịch đúng lúc cần).
    * Vì sao đo 25 lần: 
       - Kể khi đã warm-up, cùng một mảng và cùng một CUTOFF, mỗi lần đo vẫn ra số hơi khác: hệ điều hành chen việc khác vào, Java dừng lại dọn bộ nhớ, CPU đổi tốc độ theo nhiệt độ (Một lần đo có thể trúng lúc máy giật)
       - Đo 25 lần để lấy trung vị (xếp 25 số theo thứ tự, trung vị là số thứ 13) => các lần đo bật thường bị loại ra 1 cách tự nhiên. Cột `std_ms` trong `summary.csv` cho biết các lần dao động bao nhiêu. 
-c. Được đo bằng `System.nanoTime()`; copy mảng trước khi bấm giờ: 
-   * 
-d. Mảng nhỏ: sắp xếp nhiều bản sao trong một lần đo (ít nhất 200.000 phần tử) rồi chia trung bình.
-e. Xáo thứ tự CUTOFF ở mỗi vòng; gọi `System.gc()` trước mỗi vòng.
-f. Kiểm tra tính đúng bằng cách so với `Arrays.sort`.
-g. Dùng trung vị làm số liệu chính; chỉ số so sánh là `ratio = median(CUTOFF) / median(CUTOFF = 1)`.
+
+**c. Bấm giờ `System.nanoTime()` và copy mảng trước khi bấm giờ:**
+   * `System.nanoTime()` trả về con số tính bằng nano giây (1 ns = 10^-9 giây). Hàm này được gọi trước khi sort và sau khi sort => dùng để tính ra thời gian sort (sau trừ đi trước). 
+   * So với `System.currentTimeMillis()` (Độ phân giải mili s, sort mảng 1000 phần tử chỉ mất khoản 0,07ms nên đo ra 0, và có thể nhảy lùi khi máy chỉnh giờ), `nanoTime` được thiết kế để đo khoảng thời gian và luôn tăng đều. 
+   * Sort làm thay đổi chính mảng được truyền vào vì nó sắp xếp tại chỗ. Nếu lần đo sau lại sort mảng sắp xếp từ trước thì sẽ sort nhanh hơn dẫn đến những CUTOFF nào được đo đầu tiên trông chậm nhất và các CUTOFF khác về sau sẽ đo sai dữ liệu dẫn đến sai toàn bộ thí nghiệm. 
+   Vì vậy nên chương trình giữ một mảng gốc `base` không bao giờ bị sort và trước mỗi lần đo thì copy mảng `base` sang mảng `w` rồi sort `w`. Mọi CUTOFF và mọi lần đo đều bắt đầu từ cùng một dữ liệu.
+   * Vì sao copy lại nằm ngoài khoảng thời gian bấm giờ: Nếu tính cả copy thì mọi phép đo cộng thêm cùng 1 khoảng thời gian, làm chênh lệch tương đối giữa các CUTOFF trông nhỏ đi và cột `ratio_vs_baseline` bị sai lệch. 
+   * `System.arraycopy` là hàm có sẵn của Java, được JVM tối ưu nên nhanh hơn vòng `for` tự viết. 
+   Đoạn code tương ứng trong hàm `timeOnce` của `CutoffBenchmark.java`:
+
+      ```java
+      for (Comparable[] w : work) System.arraycopy(base, 0, w, 0, base.length);
+
+      long start = System.nanoTime();
+      for (Comparable[] w : work) {
+         MergeSortCutOff.sort(w, cutoff);
+      }
+      long elapsed = System.nanoTime() - start;
+      ```
+
+   * Dòng đầu copy mảng gốc sang các mảng làm việc. Lệnh `System.nanoTime()` thứ nhất chỉ được gọi sau đó, nên thời gian copy không bị tính vào `elapsed`.
+
+**d. Kéo dài khoảng đo cho mảng nhỏ.**
+   * Mỗi lần bấm giờ đều có một sai số không phụ thuộc vào thứ được đo: 
+      - Lời gọi `System.nanoTime()` tốn thời gian, khoảng vài chục nano giây. 
+      - Một sự kiện ngắt quãng (hệ điều hành có thể xử lý việc khác) rơi vào đúng khoảng đo.
+   * Với mảng nhỏ, thời gian một lần sắp xếp quá `ngắn` so với sai số của đồng hồ, nên chương trình sắp xếp nhiều bản sao trong một lần bấm giờ rồi chia trung bình, để sai số được chia đều và trở nên không đáng kể.  
+   * Vì sao khoảng đo `ngắn` lại có hại: Điều quan trọng là **sai số tương đối**, sai số chia cho thời gian đo được, cùng 1 sai số, khoảng đo càng ngắn thì tỉ lệ sai càng lớn, có thể lớn ngang chênh lệch giữa các CUTOFF (vài phần trăm) cần phân biệt. 
+   Vì vậy, với mảng nhỏ, chương trình sắp xếp nhiều bản sao trong một lần bấm giờ rồi chia cho số bản sao. Khoảng đo dài ra nhiều lần, sai số được chia đều và trở nên không đáng kể, còn con số ghi lại vẫn là thời gian của một lần sắp xếp. Số bản sao được chọn để mỗi lần đo sắp xếp tổng cộng khoảng 200.000 phần tử:
+
+      | N | Số bản sao | Tổng phần tử mỗi lần đo |
+      |---|---|---|
+      | 1.000 | 200 | 200.000 |
+      | 10.000 | 20 | 200.000 |
+      | 100.000 | 2 | 200.000 |
+      | 1.000.000 | 1 | 1.000.000 |
+
+   * Mỗi bản sao đều được copy từ mảng gốc `base` (mục c), nên mọi lần sắp xếp đều xuất phát từ cùng một dữ liệu.
+
+     **Kiểm chứng bằng thí nghiệm đối chứng.** Để xem biện pháp này có tác dụng thật không, thí nghiệm được chạy lại với N = 1.000 và 10.000 nhưng mỗi lần bấm giờ chỉ sắp xếp một mảng, rồi so độ dao động của các lần đo (độ lệch chuẩn chia trung vị) với thí nghiệm chính. Kết quả với dữ liệu ngẫu nhiên:
+
+      | N | CUTOFF | Gộp bản sao | Không gộp |
+      |---|---|---|---|
+      | 1.000 | 1 | 2,1% | 85,3% |
+      | 1.000 | 7 | 2,1% | 70,5% |
+      | 1.000 | 10 | 3,1% | 84,1% |
+      | 10.000 | 1 | 0,6% | 0,8% |
+      | 10.000 | 7 | 0,6% | 3,4% |
+      | 10.000 | 10 | 0,6% | 1,9% |
+
+   * Với N = 1.000, khi không gộp, độ dao động lên tới 70–85%, lớn gấp nhiều lần chênh lệch khoảng 5% giữa CUTOFF 7 và 10. Khi gộp 200 bản sao, độ dao động chỉ còn 2–3%, đủ nhỏ để phân biệt các CUTOFF.
+   * Với N = 10.000, một lần sắp xếp đã mất hơn 1 ms nên khoảng đo vốn đủ dài; không gộp chỉ dao động 0,8–3,4%, và gộp vẫn giảm được xuống 0,6%. Hiệu quả của việc gộp giảm dần khi khoảng đo dài ra, đúng như lập luận ở trên.
+   * Nhiễu cũng làm sai lệch kết luận: lần chạy không gộp chọn ra CUTOFF tốt nhất cho dữ liệu ngẫu nhiên là 12 (N = 1.000) và 28 (N = 10.000), trong khi thí nghiệm chính cho 19 ở cả hai kích thước.
+
+   Do độ lệch chuẩn rất nhạy với vài lần đo bất thường, mức 70–85% chủ yếu phản ánh việc một số lần đo vọt lên gấp nhiều lần, không có nghĩa là mọi lần đo đều lệch như vậy.
+
+   Cách chạy thí nghiệm đối chứng xem Phụ lục A; số liệu thô nằm trong thư mục
+
+**e. Xáo thứ tự CUTOFF ở mỗi vòng; gọi `System.gc()` trước mỗi vòng.**
+
+**f. Kiểm tra tính đúng bằng cách so với `Arrays.sort`.**
+
+**g. Dùng trung vị làm số liệu chính; chỉ số so sánh là `ratio = median(CUTOFF) / median(CUTOFF = 1)`.**
 
 ## 5. Kết quả
 
@@ -145,7 +203,49 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 
 ## Phụ lục
 
-- Mã nguồn: `MergeSortCutOff.java`, `Data.java`, `Benchmark.java`, `plot.py`
-- Dữ liệu: `data/`; kết quả thô: `results/raw.csv`; tổng hợp: `results/summary.csv`
-- Hướng dẫn chạy lại: `README.md`
+### Phụ lục A. Thí nghiệm đối chứng cho mục 4.3d
+
+**Mục đích.** Kiểm tra tác dụng của việc gộp nhiều bản sao trong một lần bấm giờ, bằng cách đo lại khi mỗi lần bấm giờ chỉ sắp xếp một mảng.
+
+**Cách chạy.**
+
+1. Tạm sửa hai hằng số trong `Benchmark.java`:
+   ```java
+   static final int[] SIZES = {1_000, 10_000};
+   static final int MIN_ELEMENTS_PER_MEASUREMENT = 1;   // mỗi lần đo chỉ sắp xếp 1 mảng
+   ```
+2. Biên dịch và chạy, ghi kết quả vào thư mục riêng để không đè kết quả chính:
+   ```
+   javac *.java
+   java Benchmark 25 5 data results_single
+   ```
+3. Sửa hai hằng số về giá trị ban đầu (`{1_000, 10_000, 100_000, 1_000_000}` và `200_000`) rồi biên dịch lại.
+4. So sánh độ dao động bằng `python3 compare.py`.
+
+**Script so sánh (`compare.py`).** Với dữ liệu ngẫu nhiên và CUTOFF 1, 7, 10, script đọc `summary.csv` của cả hai thư mục và tính hệ số biến thiên, tức độ lệch chuẩn chia trung vị, tính theo phần trăm:
+
+```python
+def cv(path):
+    out = {}
+    with open(path, newline="") as f:
+        for r in csv.DictReader(f):
+            if r["data_type"] == "random" and r["cutoff"] in CUTOFFS:
+                out[(int(r["n"]), int(r["cutoff"]))] = 100 * float(r["std_ms"]) / float(r["median_ms"])
+    return out
+```
+
+Dùng tỉ lệ thay vì độ lệch chuẩn tuyệt đối để so sánh được giữa các kích thước N khác nhau (độ lệch 0,1 ms là rất lớn với N = 1.000 nhưng không đáng kể với N = 10.000). Mã nguồn đầy đủ: `compare.py`; số liệu thô: `results_single/`.
+
+### Phụ lục B. Danh mục tệp
+
+| Loại | Tệp |
+|---|---|
+| Mã nguồn | `MergeSortCutOff.java`, `Data.java`, `Benchmark.java`, `plot.py`, `compare.py` |
+| Dữ liệu | `data/` (20 tệp, seed `20261116`) |
+| Kết quả thí nghiệm chính | `results/raw.csv`, `results/summary.csv`, `results/environment.txt`, `results/*.png` |
+| Kết quả đối chứng | `results_single/` |
+| Hướng dẫn chạy lại | `README.md` |
+| Log trao đổi với AI | `ai-chat-log/` |
+
+### Phụ lục C. Sử dụng AI
 - Sử dụng AI: (Các script đo, sinh dữ liệu và vẽ đồ thị được viết với sự hỗ trợ của AI; cài đặt mergesort do em tự viết từ slide bài giảng và bản Report được viết dưới sự hiểu biết về thí nghiệm của em). 
