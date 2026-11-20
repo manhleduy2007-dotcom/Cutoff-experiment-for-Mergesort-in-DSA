@@ -156,10 +156,49 @@ for (int run = 0; run < runs; run++) {
     }
 }
 ```
+**f. Dùng trung vị làm số liệu chính; chỉ số so sánh là `ratio = median(CUTOFF) / median(CUTOFF = 1)`.**
 
-**f. Kiểm tra tính đúng của kết quả sắp xếp**
+**Vấn đề:** Mỗi lần đo đều có nhiễu, nên mỗi tổ hợp (kiểu dữ liệu, N, CUTOFF) được đo 25 lần và cần gom thành một con số đại diện. Trong benchmark, các lần đo bất thường gần như luôn lệch lên (GC hoặc hệ điều hành chen vào giữa phép đo), nên trung bình bị kéo lên theo. Ngoài ra, thời gian tuyệt đối chênh nhau hàng nghìn lần giữa các kích thước N, nên không so sánh trực tiếp được trên cùng một thang.
 
-**Vấn đề:** Thời gian đo được chỉ có ý nghĩa nếu đó là thời gian của một thuật toán sắp xếp đúng. Lỗi cú pháp thì trình biên dịch tự báo, nhưng lỗi logic (sai điều kiện trong `merge` hay `insertionSort`) thì chương trình vẫn chạy bình thường và vẫn in ra thời gian, không báo gì. Nếu không kiểm tra, không thể biết số đo là của một cài đặt đúng hay sai.
+**Cách xử lý:**
+
+* **Dùng trung vị làm số liệu chính.** Trung vị là giá trị đứng giữa sau khi xếp 25 lần đo theo thứ tự, nên vài lần đo vọt lên rất cao không làm thay đổi nó. Ví dụ với dữ liệu ngẫu nhiên, N = 100.000:
+
+| CUTOFF | Trung vị (ms) | Trung bình (ms) | Độ lệch chuẩn (ms) |
+|---|---|---|---|
+| 14 | 16,337 | 16,328 | 0,199 |
+| 15 | 16,438 | 17,115 | 3,515 |
+
+  Độ lệch chuẩn của CUTOFF 15 lớn gấp khoảng 17 lần CUTOFF 14, cho thấy có lần đo bất thường. Theo trung bình, CUTOFF 15 chậm hơn CUTOFF 14 tới 4,8%; theo trung vị chỉ chậm hơn 0,6%, phản ánh đúng việc hai giá trị gần như ngang nhau.
+
+* **So sánh bằng tỉ lệ với mergesort thuần:** `ratio = median(CUTOFF) / median(CUTOFF = 1)`. CUTOFF = 1 tương đương mergesort không dùng insertion sort, nên tỉ lệ cho biết trực tiếp mức lợi của cải tiến: ratio 0,88 nghĩa là nhanh hơn 12%, ratio lớn hơn 1 nghĩa là chậm hơn. Vì tỉ lệ không phụ thuộc thời gian tuyệt đối, các kích thước N khác nhau được so sánh trên cùng một thang và vẽ chung một đồ thị.
+
+* **Độ lệch chuẩn được dùng để đánh giá ý nghĩa của chênh lệch:** khi chênh lệch giữa hai CUTOFF nhỏ hơn độ lệch chuẩn, không thể kết luận giá trị nào tốt hơn.
+
+**Code minh họa:** tính trung vị và tỉ lệ trong `Benchmark.java`:
+
+```java
+private static double median(double[] x) {
+    double[] s = x.clone();
+    Arrays.sort(s);
+    int m = s.length / 2;
+    return (s.length % 2 == 1) ? s[m] : (s[m - 1] + s[m]) / 2.0;
+}
+```
+
+```java
+for (int i = 0; i < CUTOFFS.length; i++) {
+    medians[i] = median(times[i]);
+    if (CUTOFFS[i] == BASELINE_CUTOFF) baselineMedian = medians[i];  
+}
+// ratio_vs_baseline = medians[i] / baselineMedian
+```
+
+**Giới hạn:** mọi tỉ lệ của cùng một (kiểu dữ liệu, N) đều chia cho cùng một trung vị mốc, nên nếu số đo tại CUTOFF = 1 bị nhiễu thì cả đường dịch theo. Đây là một nguyên nhân các đường N = 1.000.000 trên đồ thị dao động mạnh.
+
+**g. Kiểm tra tính đúng của kết quả sắp xếp**
+
+**Vấn đề:** Thời gian đo được chỉ có ý nghĩa nếu đó là thời gian của một thuật toán sắp xếp đúng. Lỗi cú pháp thì trình biên dịch tự báo, nhưng lỗi logic (sai điều kiện trong `merge` hay `insertionSort`) thì chương trình vẫn chạy bình thường và vẫn in ra thời gian và không thồng báo gì. Nếu không kiểm tra, chúng ta không thể biết số đo là của một cài đặt đúng hay sai.
 
 **Cách xử lý:** Benchmark kiểm tra ở hai lớp:
 
@@ -214,8 +253,6 @@ if (!isSorted(work[work.length - 1])) {
 * `isSorted` phát hiện bản lỗi ở tất cả các CUTOFF đã thử, trừ CUTOFF = 1, nên `Benchmark` sẽ dừng ngay nếu gặp cài đặt này.
 
 Cách tạo bản lỗi và chạy thí nghiệm minh họa xem Phụ lục B.
-
-**g. Dùng trung vị làm số liệu chính; chỉ số so sánh là `ratio = median(CUTOFF) / median(CUTOFF = 1)`.**
 
 ## 5. Kết quả
 
@@ -327,7 +364,7 @@ def cv(path):
 
 Dùng tỉ lệ thay vì độ lệch chuẩn tuyệt đối để so sánh được giữa các kích thước N khác nhau: cùng một độ lệch 0,1 ms còn lớn hơn cả thời gian một lần sắp xếp với N = 1.000 (khoảng 0,08 ms), nhưng chỉ bằng khoảng 7% thời gian sắp xếp với N = 10.000 (khoảng 1,4 ms). Mã nguồn đầy đủ: `compare.py`; số liệu thô: `results_single/`.
 
-### Phụ lục B. Thí nghiệm minh họa cho mục 4.3f
+### Phụ lục B. Thí nghiệm minh họa cho mục 4.3g
 
 **Mục đích.** Cho thấy một cài đặt có lỗi logic vẫn chạy bình thường và vẫn cho ra thời gian đo, thậm chí còn nhanh hơn cài đặt đúng, nên không thể chỉ nhìn thời gian mà biết cài đặt đúng hay sai.
 
