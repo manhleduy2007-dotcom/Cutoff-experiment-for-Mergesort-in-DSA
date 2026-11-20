@@ -186,6 +186,7 @@ private static double median(double[] x) {
 }
 ```
 
+
 ```java
 for (int i = 0; i < CUTOFFS.length; i++) {
     medians[i] = median(times[i]);
@@ -342,7 +343,6 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 
 ## 6. Phân tích
 
-
 **a. CUTOFF 7 hay 10 tốt hơn trên máy em?**
 
 - Với dữ liệu ngẫu nhiên, CUTOFF 10 nhanh hơn 7 ở N = 1.000 (5%) và N = 10.000 (2,6%), đều lớn hơn độ lệch chuẩn (2–3% và 0,6%) nên có ý nghĩa. Ở N = 100.000, chênh lệch 0,4% nhỏ hơn độ lệch chuẩn 1,2%, nên hai giá trị ngang nhau. Ở N = 1.000.000, nhiễu (7,9%) quá lớn để kết luận.
@@ -391,6 +391,8 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 
 ## 8. Kết luận
 
+Thí nghiệm cho thấy cải tiến dùng insertion sort cho các đoạn con nhỏ có lợi thật: với dữ liệu ngẫu nhiên và N ≤ 100.000, mergesort có CUTOFF phù hợp nhanh hơn mergesort thuần khoảng 9–20%, và mức lợi giảm dần khi N tăng. Giữa hai giá trị trong giáo trình, trên máy của em CUTOFF 10 tốt hơn hoặc bằng CUTOFF 7 với dữ liệu ngẫu nhiên, nhiều khóa trùng, đã sắp xếp và gần sắp xếp; chỉ với dữ liệu đảo ngược thì CUTOFF 7 có lợi hơn. Đường cong thời gian có đáy rộng, nên không có một giá trị tối ưu duy nhất: các CUTOFF trong khoảng 12–20 đều gần tối ưu với dữ liệu ngẫu nhiên, nhưng chỉ nhanh hơn CUTOFF 10 khoảng 0–3%, mức chênh lệch ngang với nhiễu đo. Ngoài ra, CUTOFF tối ưu phụ thuộc mạnh vào kiểu dữ liệu và vào độ dài các đoạn con mà N tạo ra. Vì vậy, em đề xuất dùng CUTOFF = 10 cho trường hợp chung trên cấu hình máy này: giá trị này nằm sát vùng tối ưu với dữ liệu ngẫu nhiên và không gây chậm đáng kể với các kiểu dữ liệu còn lại.
+
 ## Phụ lục
 
 ### Phụ lục A. Thí nghiệm đối chứng cho mục 4.3d
@@ -402,7 +404,8 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 1. Tạm sửa hai hằng số trong `Benchmark.java`:
    ```java
    static final int[] SIZES = {1_000, 10_000};
-   static final int MIN_ELEMENTS_PER_MEASUREMENT = 1;   // mỗi lần đo chỉ sắp xếp 1 mảng
+   static final int MIN_ELEMENTS_PER_MEASUREMENT = 1;   
+   // mỗi lần đo chỉ sắp xếp 1 mảng
    ```
 2. Biên dịch và chạy, ghi kết quả vào thư mục riêng để không đè kết quả chính:
    ```
@@ -462,4 +465,4 @@ Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư m�
 | Log trao đổi với AI | `ai-chat-log/` |
 
 ### Phụ lục D. Sử dụng AI
-- Sử dụng AI: (Các script đo, sinh dữ liệu và vẽ đồ thị được viết với sự hỗ trợ của AI; cài đặt mergesort do em tự viết từ slide bài giảng và bản Report được viết dưới sự hiểu biết về thí nghiệm của em). 
+- Các script đo, sinh dữ liệu và vẽ đồ thị,  được viết với sự hỗ trợ của AI; cài đặt mergesort do em tự viết từ slide bài giảng và bản Report được viết dưới sự hiểu biết về thí nghiệm của em). 
