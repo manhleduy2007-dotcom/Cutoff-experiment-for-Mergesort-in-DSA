@@ -11,11 +11,13 @@ Báo cáo đầy đủ: [`Report.md`](Report.md).
 ├── MergeSortCutOff.java   Cài đặt mergesort + insertion sort (tự viết từ slide bài giảng)
 ├── Data.java              Sinh bộ dữ liệu thí nghiệm
 ├── Benchmark.java         Đo thời gian và thống kê
-├── plot.py                So sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng
+├── plot.py                Vẽ đồ thị từ kết quả đo
+├── compare.py             So sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng
+├── brokendemo/            Thí nghiệm minh họa: bản lỗi cố ý và chương trình so sánh
 ├── data/                  20 file dữ liệu (5 kiểu × 4 kích thước)
 ├── results/               Kết quả thí nghiệm chính (CSV), cấu hình máy và đồ thị
-├── results_single/        Kết quả thí nghiệm đối chứng (không gộp. bản sao)
-└── Report.md             Báo cáo thí nghiệm
+├── results_single/        Kết quả thí nghiệm đối chứng (không gộp bản sao)
+└── Report.md              Báo cáo thí nghiệm
 ```
 
 ## Yêu cầu
@@ -24,6 +26,8 @@ Báo cáo đầy đủ: [`Report.md`](Report.md).
 - Python 3 và thư viện `matplotlib` (cho bước vẽ đồ thị)
 
 ## Cách chạy lại thí nghiệm chính
+
+Tất cả các lệnh chạy ở thư mục gốc của project.
 
 ```bash
 # 1. Biên dịch
@@ -51,7 +55,7 @@ Khi đo chính thức nên cắm sạc, đóng các ứng dụng khác và khôn
 
 ## Cách chạy lại thí nghiệm đối chứng
 
-Thí nghiệm đối chứng kiểm tra tác dụng của việc gộp nhiều bản sao trong một lần bấm giờ (xem mục 4.3d của báo cáo), bằng cách đo lại khi mỗi lần bấm giờ chỉ sắp xếp một mảng.
+Thí nghiệm đối chứng kiểm tra tác dụng của việc gộp nhiều bản sao trong một lần bấm giờ (mục 4.3d và Phụ lục A của báo cáo), bằng cách đo lại khi mỗi lần bấm giờ chỉ sắp xếp một mảng.
 
 1. Tạm sửa hai hằng số trong `Benchmark.java`:
    ```java
@@ -69,6 +73,15 @@ Thí nghiệm đối chứng kiểm tra tác dụng của việc gộp nhiều b
    python3 compare.py
    ```
 
+## Cách chạy thí nghiệm minh họa
+
+Thí nghiệm minh họa cho thấy một cài đặt có lỗi logic vẫn chạy và còn trông nhanh hơn cài đặt đúng (mục 4.3g và Phụ lục B của báo cáo). `brokendemo/BrokenSort.java` là bản sao của `MergeSortCutOff.java` với `insertionSort` bị làm hỏng có chủ đích; `brokendemo/BrokenDemo.java` đo và so sánh hai bản.
+
+```bash
+javac -d brokendemo/out MergeSortCutOff.java brokendemo/*.java
+java -cp brokendemo/out BrokenDemo
+```
+
 ## Thiết kế thí nghiệm
 
 | Biến | Giá trị |
@@ -84,8 +97,8 @@ Các biện pháp để kết quả đo đáng tin:
 - **Warm-up**: chạy bỏ 5 vòng đầu để JIT của Java biên dịch xong mã trước khi đo.
 - **Bấm giờ bằng `System.nanoTime()` và tách thời gian copy mảng**: mỗi lần đo copy mảng gốc sang mảng làm việc trước khi bấm giờ, nên mọi CUTOFF được đo trên cùng dữ liệu và thời gian copy không bị tính.
 - **Kéo dài khoảng đo cho mảng nhỏ**: mỗi lần bấm giờ sắp xếp nhiều bản sao (tổng cộng ít nhất 200.000 phần tử) rồi chia trung bình, để sai số của đồng hồ không đáng kể. Thí nghiệm đối chứng cho thấy với N = 1.000, độ dao động giảm từ 70–85% xuống 2–3%.
+- **Xáo thứ tự CUTOFF và gọi `System.gc()`** ở đầu mỗi vòng đo, để nhiễu thay đổi theo thời gian (nhiệt độ CPU, dọn bộ nhớ) không dồn về một giá trị CUTOFF.
 - **Lặp 25 lần và dùng trung vị** (median) làm số liệu chính, vì ít bị ảnh hưởng bởi các lần đo bất thường.
-- **Xáo thứ tự CUTOFF** ở mỗi vòng đo, để nhiễu hệ thống (nhiệt độ CPU, dọn bộ nhớ) không dồn về một giá trị.
 - **Kiểm tra tính đúng**: so kết quả với `Arrays.sort` ở vòng warm-up đầu và kiểm tra mảng đã sắp xếp sau mỗi lần đo (ngoài thời gian đo).
 
 ## Định dạng kết quả
@@ -109,18 +122,19 @@ Các biện pháp để kết quả đo đáng tin:
 
 **`environment.txt`**: hệ điều hành, phiên bản Java, số nhân CPU, tham số thí nghiệm.
 
-Cả `results/` và `results_single/` đều có ba file trên. Riêng `results/` có thêm đồ thị: `cutoff_<kiểu>.png` (thời gian tương đối theo CUTOFF, mỗi N một đường) và `runtime_vs_n.png` (thời gian theo N, thang log-log).
+Cả `results/` và `results_single/` đều có ba file trên. Riêng `results/` có thêm đồ thị: `cutoff_<kiểu>.png` (5 file, một file cho mỗi kiểu dữ liệu: thời gian tương đối theo CUTOFF, mỗi N một đường) và `runtime_vs_n.png` (thời gian theo N, thang log-log).
 
 ## Kết quả tóm tắt
 
-Trên máy thí nghiệm (Apple Silicon, 10 nhân, macOS 26.7.3, Java 25.0.2), với dữ liệu ngẫu nhiên:
+Trên máy thí nghiệm (MacBook Pro M1 Pro, 10 nhân, 32 GB RAM, macOS 26.7.3, Java 25.0.2):
 
-- CUTOFF = 10 nhanh hơn hoặc bằng CUTOFF = 7 ở mọi kích thước.
-- Vùng tối ưu khoảng 12–20, nhưng chỉ nhanh hơn CUTOFF = 10 khoảng 0–3%.
-- Không có CUTOFF tốt nhất cho mọi kiểu dữ liệu: dữ liệu đảo ngược cần CUTOFF nhỏ, dữ liệu gần sắp xếp hưởng lợi từ CUTOFF lớn.
+- Với dữ liệu ngẫu nhiên, CUTOFF = 10 nhanh hơn hoặc bằng CUTOFF = 7 ở mọi kích thước có số đo đủ tin cậy (N ≤ 100.000).
+- Vùng tối ưu cho dữ liệu ngẫu nhiên khoảng 12–20, nhưng chỉ nhanh hơn CUTOFF = 10 khoảng 0–3%.
+- Không có CUTOFF tốt nhất cho mọi kiểu dữ liệu: dữ liệu đảo ngược cần CUTOFF nhỏ, dữ liệu đã sắp xếp và gần sắp xếp hưởng lợi từ CUTOFF lớn.
+- Đề xuất: dùng CUTOFF = 10 cho trường hợp chung trên cấu hình máy này.
 
 Chi tiết và phân tích xem trong [`Report.md`](Report.md).
 
 ## Ghi chú về việc sử dụng AI
 
-Đề bài cho phép dùng AI để thảo luận, viết script và xây dựng bộ dữ liệu. `Data.java`, `Benchmark.java`, `plot.py`, `compare.py` và README này được viết với sự hỗ trợ của AI. `MergeSortCutOff.java` được tự cài đặt từ nội dung bài giảng. Chi tiết về phần AI hỗ trợ trong báo cáo xem phụ lục của `Report.md`; log trò chuyện nằm trong `ai-chat-log/`.
+Đề bài cho phép dùng AI để thảo luận, viết script và xây dựng bộ dữ liệu. `Data.java`, `Benchmark.java`, `plot.py`, `compare.py`, `brokendemo/BrokenSort.java`, `brokendemo/BrokenDemo.java` và README này được viết với sự hỗ trợ của AI. `MergeSortCutOff.java` được tự cài đặt từ nội dung bài giảng. Chi tiết về phần AI hỗ trợ xem Phụ lục D của `Report.md`.

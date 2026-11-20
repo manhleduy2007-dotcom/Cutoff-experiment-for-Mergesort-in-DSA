@@ -20,7 +20,7 @@ Mergesort có cải tiến dùng insertion sort cho mảng con nhỏ thay vì s�
 ## 3. Cài đặt
 Mô tả code đã được cài đặt để thực hiện thí nghiệm **MergeSortCutOff**: 
 - Sử dụng 1 hàm `merge` để merge 2 mảng con đã sắp xếp lại với nhau. 
-- Một hàm `insertionSort` để sử dụng khi CUTOFF đạt đúng điều kiện, điều kiện này được kiểm tra trong hàm sort công khai. 
+- Một hàm `insertionSort` để sử dụng khi CUTOFF đạt đúng điều kiện, điều kiện này được kiểm tra trong hàm `sort` đệ quy (hàm private có tham số `dau`,`cuoi`). Hàm công khai chỉ tạo mảng aux rồi gọi hàm đệ quy. 
 - Khi mảng đủ nhỏ để sử dụng InsertionSort trong đệ quy với điều kiện: `cuoi <= dau + cutoff - 1`, ta sẽ sử dụng InsertionSort để sắp xếp mảng con đó. 
 - Nếu không đủ nhỏ thì tiếp tục đệ quy.
 
@@ -55,24 +55,24 @@ Mỗi kiểu có 4 kích thước N = 1.000; 10.000; 100.000; 1.000.000, tổng 
 
 **a. Chọn các giá trị CUTOFF cần kiểm tra:**
    * Vùng dày chạy từ `1-20 chứa 2 giá trị 7 và 10` có thể show ra đáy chữ U và cần độ phân giải cao để thấy chính xác chỗ nhảy bậc. 
-   * Vùng thưa `24, 28, 32, 40, 48, 64` chỉ cần xác nhận đường cong đi lên lại. Đoạn con bị chia đôi nên càng về sau các bậc càng cách xa nhau (Dừng CUTOFF ở 64 vì CUTOFF 64 đã chậm hơn cả Mergesort thuần)
+   * Vùng thưa `24, 28, 32, 40, 48, 64` chỉ cần xác nhận đường cong đi lên lại. Đoạn con bị chia đôi nên càng về sau các bậc càng cách xa nhau (Dừng CUTOFF ở 64 vì với dữ liệu ngẫu nhiên, CUTOFF 64 đã chậm hơn cả Mergesort thuần)
 
 **b.Warm up để không chịu ảnh hưởng của JIT**
    * Java không chạy code ở tốc độ tối đa ngay từ đầu mà qua 2 giai đoạn: 
       1. Lúc mới chạy thì JVM (Máy ảo của Java) đọc bytecode trong file `.class` và thông dịch từng lệnh một (tốc độ chậm).
-      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên (quá tải) sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compilation, biên dịch đúng lúc cần).
+      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compilation, biên dịch đúng lúc cần).
    * Vì sao đo 25 lần: 
       - Kể khi đã warm-up, cùng một mảng và cùng một CUTOFF, mỗi lần đo vẫn ra số hơi khác: hệ điều hành chen việc khác vào, Java dừng lại dọn bộ nhớ, CPU đổi tốc độ theo nhiệt độ (Một lần đo có thể trúng lúc máy giật)
-      - Đo 25 lần để lấy trung vị (xếp 25 số theo thứ tự, trung vị là số thứ 13) => các lần đo bật thường bị loại ra 1 cách tự nhiên. Cột `std_ms` trong `summary.csv` cho biết các lần dao động bao nhiêu. 
+      - Đo 25 lần để lấy trung vị (xếp 25 số theo thứ tự, trung vị là số thứ 13) => các lần đo bất thường bị loại ra 1 cách tự nhiên. Cột `std_ms` trong `summary.csv` cho biết các lần dao động bao nhiêu. 
 
 **c. Bấm giờ `System.nanoTime()` và copy mảng trước khi bấm giờ:**
    * `System.nanoTime()` trả về con số tính bằng nano giây (1 ns = 10^-9 giây). Hàm này được gọi trước khi sort và sau khi sort => dùng để tính ra thời gian sort (sau trừ đi trước). 
-   * So với `System.currentTimeMillis()` (Độ phân giải mili s, sort mảng 1000 phần tử chỉ mất khoản 0,07ms nên đo ra 0, và có thể nhảy lùi khi máy chỉnh giờ), `nanoTime` được thiết kế để đo khoảng thời gian và luôn tăng đều. 
+   * So với `System.currentTimeMillis()` (Độ phân giải mili s, sort mảng 1000 phần tử chỉ mất khoảng 0,07ms nên đo ra 0, và có thể nhảy lùi khi máy chỉnh giờ), `nanoTime` được thiết kế để đo khoảng thời gian và luôn tăng đều. 
    * Sort làm thay đổi chính mảng được truyền vào vì nó sắp xếp tại chỗ. Nếu lần đo sau lại sort mảng sắp xếp từ trước thì sẽ sort nhanh hơn dẫn đến những CUTOFF nào được đo đầu tiên trông chậm nhất và các CUTOFF khác về sau sẽ đo sai dữ liệu dẫn đến sai toàn bộ thí nghiệm. 
    Vì vậy nên chương trình giữ một mảng gốc `base` không bao giờ bị sort và trước mỗi lần đo thì copy mảng `base` sang mảng `w` rồi sort `w`. Mọi CUTOFF và mọi lần đo đều bắt đầu từ cùng một dữ liệu.
    * Vì sao copy lại nằm ngoài khoảng thời gian bấm giờ: Nếu tính cả copy thì mọi phép đo cộng thêm cùng 1 khoảng thời gian, làm chênh lệch tương đối giữa các CUTOFF trông nhỏ đi và cột `ratio_vs_baseline` bị sai lệch. 
    * `System.arraycopy` là hàm có sẵn của Java, được JVM tối ưu nên nhanh hơn vòng `for` tự viết. 
-   Đoạn code tương ứng trong hàm `timeOnce` của `CutoffBenchmark.java`:
+   Đoạn code tương ứng trong hàm `timeOnce` của `Benchmark.java`:
 
       ```java
       for (Comparable[] w : work) System.arraycopy(base, 0, w, 0, base.length);
@@ -120,7 +120,7 @@ Mỗi kiểu có 4 kích thước N = 1.000; 10.000; 100.000; 1.000.000, tổng 
 
    Do độ lệch chuẩn rất nhạy với vài lần đo bất thường, mức 70–85% chủ yếu phản ánh việc một số lần đo vọt lên gấp nhiều lần, không có nghĩa là mọi lần đo đều lệch như vậy.
 
-   Cách chạy thí nghiệm đối chứng xem Phụ lục A; số liệu thô nằm trong thư mục
+   Cách chạy thí nghiệm đối chứng xem Phụ lục A; số liệu thô nằm trong thư mục `results_single`.
 
 **e. Xáo thứ tự CUTOFF và dọn bộ nhớ trước mỗi vòng đo**
 
@@ -185,7 +185,6 @@ private static double median(double[] x) {
     return (s.length % 2 == 1) ? s[m] : (s[m - 1] + s[m]) / 2.0;
 }
 ```
-
 
 ```java
 for (int i = 0; i < CUTOFFS.length; i++) {
@@ -292,7 +291,7 @@ Thời gian trung vị (ms) và tỉ lệ so với mergesort thuần (trong ngo�
 | | 1.000.000 | 0,942 | 0,950 | 64 (0,845) |
 
 Số liệu đầy đủ của 520 tổ hợp: `results/summary.csv`.
-Lưu ý: cột `Tốt nhất` chỉ là giá trị có trung vị nhỏ nhất, nhiều khi chỉ hơn các CUTOFF lân cận vài phần nghìn, nhỏ hơn độ lệch chuẩn. Với N = 1.000.000, độ lệch chuẩn khoảng 6–15% nên cột này không có ý nghĩa. Với `sorted` và `nearly_sorted`, giá trị 48–64 nằm ở cuối khoảng đã thử, nên giá trị tối ưu thật có thể còn lớn hơn.
+Lưu ý: cột `Tốt nhất` chỉ là giá trị có trung vị nhỏ nhất, nhiều khi chỉ hơn các CUTOFF lân cận vài phần nghìn, nhỏ hơn độ lệch chuẩn. Với N = 1.000.000, độ lệch chuẩn khoảng 5-18% nên cột này không có ý nghĩa. Với `sorted` và `nearly_sorted`, giá trị 48–64 nằm ở cuối khoảng đã thử, nên giá trị tối ưu thật có thể còn lớn hơn.
 
 ### 5.2. Ảnh hưởng của CUTOFF theo từng kiểu dữ liệu
 
@@ -450,7 +449,7 @@ javac -d brokendemo/out MergeSortCutOff.java brokendemo/*.java
 java -cp brokendemo/out BrokenDemo
 ```
 
-Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư mục riêng, tách khỏi thí nghiệm chính. Kết quả xem bảng trong mục 4.3f.
+Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư mục riêng, tách khỏi thí nghiệm chính. Kết quả xem bảng trong mục 4.3g.
 
 ### Phụ lục C. Danh mục tệp
 
@@ -462,7 +461,58 @@ Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư m�
 | Kết quả đối chứng | `results_single/` |
 | Thí nghiệm minh họa | `brokendemo/BrokenSort.java`, `brokendemo/BrokenDemo.java` |
 | Hướng dẫn chạy lại | `README.md` |
-| Log trao đổi với AI | `ai-chat-log/` |
 
 ### Phụ lục D. Sử dụng AI
-- Các script đo, sinh dữ liệu và vẽ đồ thị,  được viết với sự hỗ trợ của AI; cài đặt mergesort do em tự viết từ slide bài giảng và bản Report được viết dưới sự hiểu biết về thí nghiệm của em). 
+
+Đề bài cho phép dùng AI để thảo luận, viết script chạy thí nghiệm và xây dựng bộ dữ liệu. Phần dưới đây ghi rõ phần nào em tự làm và phần nào có sự hỗ trợ của AI.
+
+**1. Phần em tự làm:**
+
+- Cài đặt `MergeSortCutOff.java` từ nội dung slide bài giảng: hàm `merge`, `insertionSort` trên đoạn con, hàm `sort` đệ quy có điều kiện CUTOFF và hàm `sort` công khai.
+- Chạy toàn bộ thí nghiệm trên máy của em và thu số liệu:
+  - thí nghiệm chính: kết quả trong `results/`;
+  - thí nghiệm đối chứng (Phụ lục A): kết quả trong `results_single/`;
+  - thí nghiệm minh họa (Phụ lục B): kết quả in ra màn hình, chép vào bảng ở mục 4.3g, chạy ở `brokendemo/`.
+- Viết báo cáo các mục 1, 2, 3, 4.1, 4.2. Viết bản tổng quát báo cáo các mục 4.3, 5, 6, 7, 8. 
+
+**2. AI kiểm tra Code mergesort (em tự sửa):**
+
+AI đọc code của em và chỉ ra lỗi, em tự sửa theo:
+- Bản đầu, vòng lặp trong của `insertionSort` không dừng sớm khi phần tử đã đúng chỗ: kết quả vẫn đúng nhưng chậm hơn cần thiết, sẽ làm sai lệch CUTOFF tối ưu đo được.
+- CUTOFF ban đầu là hằng số, cần chuyển thành tham số để thí nghiệm thử được nhiều giá trị.
+- Các lỗi cú pháp khi sửa (dấu chấm thay dấu phẩy, thiếu tham số `cutoff` khi gọi đệ quy).
+
+**3. Code do AI viết:**
+
+- `Data.java`: sinh 20 file dữ liệu với seed cố định.
+- `Benchmark.java`: đo thời gian, thống kê và kiểm tra tính đúng.
+- `plot.py`: vẽ đồ thị từ `summary.csv`.
+- `compare.py`: đọc `results/summary.csv` và `results_single/summary.csv`, tính hệ số biến thiên để so sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng.
+- `brokendemo/BrokenSort.java`, `brokendemo/BrokenDemo.java`: thí nghiệm minh họa bản lỗi.
+- `Readme.md`.
+
+**4. Kiến thức AI giải thích để em hiểu thí nghiệm:**
+
+- **Thiết kế thí nghiệm:** vai trò của từng file và trình tự sinh dữ liệu → đo → thống kê → vẽ đồ thị; vì sao phải thử nhiều giá trị CUTOFF chứ không chỉ 7 và 10, và vì sao chọn các giá trị dày ở 1–20, thưa từ 24 đến 64.
+- **Sinh dữ liệu:** bộ sinh số giả ngẫu nhiên, seed là gì, vì sao seed cố định đảm bảo tính tái lập.
+- **Đo thời gian trong Java:**
+  - JIT và lý do cần warm-up;
+  - `System.nanoTime()` khác `System.currentTimeMillis()` thế nào;
+  - vì sao phải copy mảng trước khi bấm giờ và để thời gian copy ngoài khoảng đo;
+  - `System.arraycopy`.
+- **Sai số đo:** sai số tương đối, vì sao mảng nhỏ phải sắp xếp nhiều bản sao trong một lần bấm giờ.
+- **Nhiễu có hệ thống:** vì sao thứ tự đo cố định gây sai lệch, thuật toán xáo trộn Fisher–Yates.
+- **Bộ nhớ trong Java:** heap, đối tượng thành rác khi nào, bộ thu gom rác (GC) và `System.gc()`, tham số `-Xms` / `-Xmx`.
+- **Thống kê:** trung vị khác trung bình thế nào khi có giá trị bất thường, độ lệch chuẩn, hệ số biến thiên, cách so chênh lệch với độ lệch chuẩn để biết chênh lệch có ý nghĩa không.
+- **Kiểm tra tính đúng:** dùng `Arrays.sort` làm đáp án chuẩn, vì sao `isSorted` một mình chưa đủ, vì sao lỗi logic có thể khiến thuật toán trông nhanh hơn.
+- **Đọc kết quả:**
+  - hiệu ứng bậc thang do mergesort chia đôi tạo ra một số độ dài đoạn con nhất định;
+  - chi phí insertion sort theo từng kiểu dữ liệu;
+  - vì sao lợi ích của CUTOFF giảm khi N tăng;
+  - cách đối chiếu thời gian đo với tăng trưởng N log N.
+
+**5. Hỗ trợ viết báo cáo:**
+
+- Dựng khung các mục của báo cáo và tính các bảng số liệu từ `results/summary.csv` của em.
+- Biên tập mục 4.3, 5, 6, 7, 8 dựa trên bản báo cáo tổng quát và số liệu thí nghiệm của em. 
+- Rà soát lỗi tham chiếu, chính tả và định dạng của toàn bộ báo cáo.
