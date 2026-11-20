@@ -473,7 +473,7 @@ Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư m�
   - thí nghiệm chính: kết quả trong `results/`;
   - thí nghiệm đối chứng (Phụ lục A): kết quả trong `results_single/`;
   - thí nghiệm minh họa (Phụ lục B): kết quả in ra màn hình, chép vào bảng ở mục 4.3g, chạy ở `brokendemo/`.
-- Viết báo cáo các mục 1, 2, 3, 4.1, 4.2. Viết bản tổng quát báo cáo các mục 4.3, 5, 6, 7, 8. 
+- Viết báo cáo các mục 1, 2, 3, 4.1, 4.2. Viết bản tổng quát báo cáo các mục 4.3, 5. 
 
 **2. AI kiểm tra Code mergesort (em tự sửa):**
 
@@ -513,6 +513,6 @@ AI đọc code của em và chỉ ra lỗi, em tự sửa theo:
 
 **5. Hỗ trợ viết báo cáo:**
 
-- Dựng khung các mục của báo cáo và tính các bảng số liệu từ `results/summary.csv` của em.
-- Biên tập mục 4.3, 5, 6, 7, 8 dựa trên bản báo cáo tổng quát và số liệu thí nghiệm của em. 
+- Dựng khung các mục của báo cáo; tính các bảng số liệu từ `results/summary.csv`; trình bày thành bảng các kết quả em chạy được từ `compare.py` (thí nghiệm đối chứng, `results_single/`) và `BrokenDemo` (thí nghiệm minh họa, `brokendemo/`).
+- Biên tập mục 4.3 dựa trên bản nháp của em; soạn phần mô tả kết quả ở các mục 6, 7, 8 dựa trên số liệu thí nghiệm của em.
 - Rà soát lỗi tham chiếu, chính tả và định dạng của toàn bộ báo cáo.
