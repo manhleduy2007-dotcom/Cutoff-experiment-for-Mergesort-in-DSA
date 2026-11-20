@@ -291,14 +291,33 @@ Thời gian trung vị (ms) và tỉ lệ so với mergesort thuần (trong ngo�
 | | 1.000.000 | 0,942 | 0,950 | 64 (0,845) |
 
 Số liệu đầy đủ của 520 tổ hợp: `results/summary.csv`.
+Lưu ý: cột `Tốt nhất` chỉ là giá trị có trung vị nhỏ nhất, nhiều khi chỉ hơn các CUTOFF lân cận vài phần nghìn, nhỏ hơn độ lệch chuẩn. Với N = 1.000.000, độ lệch chuẩn khoảng 6–15% nên cột này không có ý nghĩa. Với `sorted` và `nearly_sorted`, giá trị 48–64 nằm ở cuối khoảng đã thử, nên giá trị tối ưu thật có thể còn lớn hơn.
 
 ### 5.2. Ảnh hưởng của CUTOFF theo từng kiểu dữ liệu
 
+Trục ngang là CUTOFF, trục dọc là tỉ lệ thời gian so với CUTOFF = 1; đường nằm dưới 1,0 nghĩa là nhanh hơn mergesort thuần. Hai vạch dọc đánh dấu CUTOFF = 7 và 10.
+
 ![random](results/cutoff_random.png)
+
+**Dữ liệu ngẫu nhiên.** Với N ≤ 100.000, tỉ lệ giảm nhanh khi CUTOFF tăng từ 1, đi ngang ở một vùng đáy rộng, rồi tăng lại. Vùng đáy: N = 1.000 ở khoảng 0,80 với CUTOFF 8–28; N = 10.000 ở khoảng 0,875 với CUTOFF 10–32; N = 100.000 ở khoảng 0,91 với CUTOFF 12–20. Ở CUTOFF 64, cả ba đường đều đã lên gần hoặc vượt 1 (N = 1.000: 1,21). Đường N = 1.000.000 dao động trong khoảng 0,93–0,99, không có hình dạng rõ ràng.
+
 ![few_unique](results/cutoff_few_unique.png)
+
+**Dữ liệu nhiều khóa trùng.** Hình dạng giống dữ liệu ngẫu nhiên. Vùng đáy: N = 1.000 ở khoảng 0,75–0,76 với CUTOFF 8–14; N = 10.000 ở khoảng 0,83 với CUTOFF 10–18; N = 100.000 ở khoảng 0,86 với CUTOFF 13–20. Đường N = 1.000.000 dao động mạnh.
+
 ![reversed](results/cutoff_reversed.png)
+
+**Dữ liệu đảo ngược.** Tỉ lệ chỉ dưới 1 với CUTOFF nhỏ: đến CUTOFF 14 (N = 1.000), 9 (N = 10.000) và 11 (N = 100.000). Sau đó tăng mạnh theo từng bậc, tới 2,81 ở CUTOFF 64 với N = 1.000, tức chậm gần gấp ba mergesort thuần.
+
 ![sorted](results/cutoff_sorted.png)
+
+**Dữ liệu đã sắp xếp.** Tỉ lệ giảm liên tục theo từng bậc đến CUTOFF 64, chưa có dấu hiệu tăng lại: N = 1.000 xuống 0,37; N = 10.000 khoảng 0,60; N = 100.000 khoảng 0,72. Đường N = 1.000.000 dao động quanh 0,92–1,02.
+
 ![nearly_sorted](results/cutoff_nearly_sorted.png)
+
+**Dữ liệu gần sắp xếp.** Giống dữ liệu đã sắp xếp: giảm theo bậc đến CUTOFF 64, xuống 0,44 (N = 1.000), 0,59 (N = 10.000), 0,66 (N = 100.000) và 0,85 (N = 1.000.000).
+
+**Nhận xét chung.** Trên mọi hình, các đường N ≤ 100.000 không thay đổi đều mà đi ngang từng đoạn rồi nhảy bậc, và vị trí các bậc khác nhau giữa các N. Đường N = 1.000.000 luôn dao động mạnh hơn hẳn ba đường còn lại.
 
 
 ### 5.3. Thời gian chạy theo N
