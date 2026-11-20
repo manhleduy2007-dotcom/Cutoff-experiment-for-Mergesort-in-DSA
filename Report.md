@@ -58,9 +58,9 @@ Mỗi kiểu có 4 kích thước N = 1.000; 10.000; 100.000; 1.000.000, tổng 
    * Vùng thưa `24, 28, 32, 40, 48, 64` chỉ cần xác nhận đường cong đi lên lại. Đoạn con bị chia đôi nên càng về sau các bậc càng cách xa nhau (Dừng CUTOFF ở 64 vì CUTOFF 64 đã chậm hơn cả Mergesort thuần)
 
 **b.Warm up để không chịu ảnh hưởng của JIT**
-   * Java không chạy code ở tốc độ tối đau ngay từ đầu mà qua 2 giai đoạn: 
+   * Java không chạy code ở tốc độ tối đa ngay từ đầu mà qua 2 giai đoạn: 
       1. Lúc mới chạy thì JVM (Máy ảo của Java) đọc bytecode trong file `.class` và thông dịch từng lệnh một (tốc độ chậm).
-      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên (quá tải) sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compliation, biên dịch đúng lúc cần).
+      2. Sau khi hàm đc gọi nhiều lần: JVM nhận ra hàm đó dùng thường xuyên (quá tải) sẽ biên dịch nó thành mã máy CPU và tối ưu thêm. Từ đó hàm chạy nhanh hơn nhiều lần. Cơ chế này gọi là JIT (Just-In-Time compilation, biên dịch đúng lúc cần).
    * Vì sao đo 25 lần: 
       - Kể khi đã warm-up, cùng một mảng và cùng một CUTOFF, mỗi lần đo vẫn ra số hơi khác: hệ điều hành chen việc khác vào, Java dừng lại dọn bộ nhớ, CPU đổi tốc độ theo nhiệt độ (Một lần đo có thể trúng lúc máy giật)
       - Đo 25 lần để lấy trung vị (xếp 25 số theo thứ tự, trung vị là số thứ 13) => các lần đo bật thường bị loại ra 1 cách tự nhiên. Cột `std_ms` trong `summary.csv` cho biết các lần dao động bao nhiêu. 
@@ -342,11 +342,19 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 
 ## 6. Phân tích
 
+
 ## 7. Hạn chế
 
-## 8. Kết luận
+* **Nhiễu lớn ở N = 1.000.000.** Độ lệch chuẩn khoảng 6–15% trung vị, lớn hơn chênh lệch giữa các CUTOFF (2–5%), nên không rút ra được kết luận nào cho kích thước này.
+* **Chỉ thử N là lũy thừa của 10.** Do hiệu ứng bậc thang, CUTOFF tốt nhất phụ thuộc vào độ dài các đoạn con mà N tạo ra; với N khác (ví dụ 1.500 hay 70.000), kết quả có thể khác.
+* **Mỗi tổ hợp (kiểu dữ liệu, N) chỉ dùng một mảng.** Kết quả có thể phụ thuộc phần nào vào mảng cụ thể được sinh ra; chưa thử với nhiều mảng khác seed.
+* **CUTOFF lớn nhất được thử là 64.** Với dữ liệu đã sắp xếp và gần sắp xếp, đường cong vẫn đang giảm ở 64 nên chưa tìm được giá trị tối ưu.
+* **Chỉ đo trên một máy.** Chip Apple Silicon có cả nhân hiệu năng và nhân tiết kiệm điện; hệ điều hành có thể chuyển tiến trình giữa hai loại nhân trong lúc đo. Kết quả trên máy khác có thể khác.
+* **Dùng `Integer[]` thay vì `int[]`.** Mỗi phép so sánh phải gọi `compareTo` trên đối tượng, nên thời gian tuyệt đối và có thể cả CUTOFF tối ưu sẽ khác với mảng số nguyên nguyên thủy.
+* **`System.gc()` không chặn được hoàn toàn việc dọn rác trong lúc đo** (mục 4.3e), đặc biệt khi mỗi lần sắp xếp N = 1.000.000 cấp phát một mảng phụ khoảng 4 MB.
+* **Giả thuyết về bộ nhớ đệm ở N lớn chưa được kiểm chứng** (mục 6f).
 
-## Phụ lục
+## 8. Kết luận
 
 ## Phụ lục
 
