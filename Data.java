@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
+
 public class Data {
 
     static final int[] SIZES = {1_000, 10_000, 100_000, 1_000_000};

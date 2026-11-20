@@ -343,6 +343,41 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 ## 6. Phân tích
 
 
+**a. CUTOFF 7 hay 10 tốt hơn trên máy em?**
+
+- Với dữ liệu ngẫu nhiên, CUTOFF 10 nhanh hơn 7 ở N = 1.000 (5%) và N = 10.000 (2,6%), đều lớn hơn độ lệch chuẩn (2–3% và 0,6%) nên có ý nghĩa. Ở N = 100.000, chênh lệch 0,4% nhỏ hơn độ lệch chuẩn 1,2%, nên hai giá trị ngang nhau. Ở N = 1.000.000, nhiễu (7,9%) quá lớn để kết luận.
+- Với `few_unique`, `sorted` và `nearly_sorted`, CUTOFF 10 cũng tốt hơn hoặc bằng 7. Ngoại lệ là `reversed`, nơi 7 tốt hơn (ý d).
+- Kết luận: trên máy em, CUTOFF 10 tốt hơn hoặc bằng 7 với đa số dữ liệu.
+
+**b. Có một CUTOFF tốt nhất không?**
+
+- Các đồ thị ở mục 5.2 có **đáy rộng**: quanh điểm thấp nhất là một đoạn gần như nằm ngang. Ví dụ với dữ liệu ngẫu nhiên, N = 10.000, CUTOFF 10–32 cho tỉ lệ 0,874–0,880, chênh chưa tới 1%, ngang độ lệch chuẩn.
+- Vì vậy, giá trị "Tốt nhất" ở bảng 5.1 (19, 19, 14) chỉ hơn các CUTOFF lân cận trong phạm vi nhiễu, và có thể đổi nếu chạy lại. Nên báo cáo một khoảng: phần chung của vùng đáy ở ba kích thước là CUTOFF khoảng 12–20, chỉ nhanh hơn CUTOFF 10 khoảng 0–3%.
+
+**c. Hiệu ứng bậc thang**
+
+- Thời gian không thay đổi đều theo CUTOFF mà đi ngang từng đoạn rồi nhảy bậc. Ví dụ với dữ liệu đảo ngược, N = 1.000, mọi CUTOFF từ 8 đến 14 đều cho tỉ lệ 0,91–0,92, rồi nhảy lên 1,16 ở CUTOFF 16.
+- Nguyên nhân: mergesort chia đôi nên chỉ tạo ra một số độ dài đoạn con nhất định (với N = 1.000: …, 15–16, 7–8, 3–4). Các CUTOFF cùng "bắt" một tập đoạn con thì tạo cùng một cây đệ quy và cho cùng thời gian; thời gian chỉ nhảy khi CUTOFF vượt qua một độ dài đoạn con mới.
+- Điều này giải thích ý a: với N = 1.000 (đoạn dài 7–8) và N = 10.000 (đoạn dài 9–10), CUTOFF 10 dừng sớm hơn 7 một tầng nên nhanh hơn; với N = 100.000 (đoạn dài 12–13 rồi 6–7), cả hai cùng dừng ở đoạn 6–7 nên bằng nhau.
+
+**d. Ảnh hưởng của kiểu dữ liệu**
+
+- Chi phí insertion sort trên đoạn dài n phụ thuộc mạnh vào thứ tự ban đầu (mục 2):
+  - Đảo ngược: khoảng n²/2 phép so sánh, nên CUTOFF lớn rất có hại (CUTOFF 64 chậm gấp 2,81 lần mergesort thuần ở N = 1.000).
+  - Đã sắp xếp và gần sắp xếp: khoảng n phép so sánh nhờ vòng lặp trong dừng sớm, nên CUTOFF càng lớn càng tốt (0,37 và 0,44 ở CUTOFF 64, N = 1.000), và tối ưu nằm ngoài khoảng đã thử.
+  - Ngẫu nhiên và nhiều khóa trùng: khoảng n²/4, nằm giữa, nên có vùng đáy ở giữa.
+- Vì vậy không có CUTOFF tốt nhất cho mọi dữ liệu: khoảng 16 tốt nhất cho dữ liệu ngẫu nhiên nhưng làm chậm dữ liệu đảo ngược, còn 7–10 có lợi hoặc gần như không hại với mọi kiểu đã thử.
+
+**e. Lợi ích giảm khi N tăng**
+
+- Với dữ liệu ngẫu nhiên, mức cải thiện tốt nhất giảm từ khoảng 20% (N = 1.000) xuống khoảng 9% (N = 100.000).
+- CUTOFF chỉ thay khoảng 4 tầng đệ quy cuối bằng insertion sort. N = 1.000 có khoảng 10 tầng, nên phần được thay gần một nửa; N = 100.000 có khoảng 17 tầng, phần được thay chưa tới một phần tư. Phần tiết kiệm tỉ lệ với N, còn tổng công việc tỉ lệ với N log N, nên tỉ lệ tiết kiệm giảm dần.
+
+**f. Đối chiếu với tăng trưởng N log N**
+
+- Khi N tăng 10 lần, lý thuyết dự đoán thời gian tăng khoảng 12–13 lần. Đo được: 13,5 lần (10.000 → 100.000), khớp lý thuyết; nhưng 29,6 lần (100.000 → 1.000.000), cao hơn khoảng 2,5 lần.
+- Giả thuyết (chưa kiểm chứng): ở N = 1.000.000, dữ liệu và hàng triệu đối tượng `Integer` vượt quá bộ nhớ đệm CPU, nên nhiều truy cập phải ra bộ nhớ chính. Khi chi phí bộ nhớ chiếm phần lớn thời gian, phần tiết kiệm của CUTOFF trở nên không đáng kể, phù hợp với việc CUTOFF gần như không có tác dụng ở kích thước này.
+
 ## 7. Hạn chế
 
 * **Nhiễu lớn ở N = 1.000.000.** Độ lệch chuẩn khoảng 6–15% trung vị, lớn hơn chênh lệch giữa các CUTOFF (2–5%), nên không rút ra được kết luận nào cho kích thước này.
