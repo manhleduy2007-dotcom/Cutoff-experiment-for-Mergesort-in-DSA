@@ -122,9 +122,98 @@ Mỗi kiểu có 4 kích thước N = 1.000; 10.000; 100.000; 1.000.000, tổng 
 
    Cách chạy thí nghiệm đối chứng xem Phụ lục A; số liệu thô nằm trong thư mục
 
-**e. Xáo thứ tự CUTOFF ở mỗi vòng; gọi `System.gc()` trước mỗi vòng.**
+**e. Xáo thứ tự CUTOFF và dọn bộ nhớ trước mỗi vòng đo**
 
-**f. Kiểm tra tính đúng bằng cách so với `Arrays.sort`.**
+Thí nghiệm chạy 20–30 phút, và trong thời gian đó máy không ở trạng thái như nhau: CPU nóng dần, tác vụ nền của hệ điều hành bắt đầu hoặc kết thúc, rác tích tụ dần trong bộ nhớ. Hai biện pháp dưới đây cùng được thực hiện ở đầu mỗi vòng đo để những thay đổi này không làm lệch kết quả.
+
+**Xáo thứ tự CUTOFF**
+
+* *Vấn đề:* nếu luôn đo theo thứ tự cố định 1, 2, ..., 64 thì trong mỗi vòng, CUTOFF 64 luôn được đo sau cùng. Nếu máy chậm dần trong vòng, CUTOFF lớn sẽ luôn bị đo lúc máy chậm hơn và trông chậm hơn thực tế. Đây là sai lệch có hệ thống: lần đo nào cũng lệch về cùng một phía, nên lặp lại nhiều lần hay dùng trung vị cũng không loại bỏ được.
+* *Cách xử lý:* trước mỗi vòng, 26 giá trị CUTOFF được xáo ngẫu nhiên bằng thuật toán Fisher–Yates, thuật toán xáo trộn mảng sao cho mọi thứ tự có thể xảy ra đều có xác suất như nhau. Sau 25 vòng, mỗi CUTOFF được đo ở đầu, giữa và cuối vòng với tần suất như nhau, nên sai lệch có hệ thống trở thành nhiễu ngẫu nhiên và được xử lý bằng việc lặp lại 25 lần.
+* Bộ sinh số ngẫu nhiên dùng seed cố định (`ORDER_SEED = 42`), nên chạy lại thí nghiệm sẽ cho đúng cùng thứ tự đo, đảm bảo tính tái lập.
+
+**Gọi `System.gc()` trước mỗi vòng**
+
+* *Vấn đề:* mỗi lần gọi `new`, Java cấp một vùng nhớ trên heap. Khi không còn biến nào trỏ tới một đối tượng, đối tượng đó thành rác nhưng chưa được xóa ngay. Bộ thu gom rác (Garbage Collector, GC) tự chạy khi heap gần đầy để giải phóng bộ nhớ, và trong lúc dọn có thể tạm dừng chương trình. Thí nghiệm này sinh rất nhiều rác, vì mỗi lần sắp xếp đều cấp phát một mảng phụ mới:
+
+  ```java
+  Comparable[] aux = new Comparable[a.length];
+  ```
+
+  Nếu GC chạy đúng lúc đang bấm giờ, phép đo đó bị cộng thêm thời gian dọn rác, không liên quan gì đến CUTOFF.
+* *Cách xử lý:* `System.gc()` yêu cầu Java dọn rác ngay lúc đó. Gọi nó trước mỗi vòng giúp heap sạch khi bắt đầu đo, nên GC ít có khả năng chen vào giữa các phép đo. Thời gian dọn rác nằm ngoài khoảng bấm giờ. Ngoài ra, lệnh chạy dùng `-Xms2g -Xmx2g` để cố định kích thước heap, tránh việc JVM co giãn heap giữa chừng.
+* *Giới hạn:* `System.gc()` chỉ là lời đề nghị, JVM có quyền bỏ qua; và nó chỉ được gọi một lần mỗi vòng, trong khi mỗi vòng có 26 phép đo, nên GC vẫn có thể xảy ra trong lúc đo, nhất là với N = 1.000.000. Những lần đo đó trở thành giá trị bất thường, và đây là một lý do thí nghiệm dùng trung vị thay vì trung bình (mục f).
+
+Đoạn code tương ứng trong `Benchmark.java`:
+
+```java
+for (int run = 0; run < runs; run++) {
+    shuffle(order, orderRnd);   // Xáo thứ tự 26 CUTOFF.
+    System.gc();                // Dọn bộ nhớ trước khi đo.
+    for (int idx : order) {
+        double ns = timeOnce(base, work, CUTOFFS[idx]);
+        ...
+    }
+}
+```
+
+**f. Kiểm tra tính đúng của kết quả sắp xếp**
+
+**Vấn đề:** Thời gian đo được chỉ có ý nghĩa nếu đó là thời gian của một thuật toán sắp xếp đúng. Lỗi cú pháp thì trình biên dịch tự báo, nhưng lỗi logic (sai điều kiện trong `merge` hay `insertionSort`) thì chương trình vẫn chạy bình thường và vẫn in ra thời gian, không báo gì. Nếu không kiểm tra, không thể biết số đo là của một cài đặt đúng hay sai.
+
+**Cách xử lý:** Benchmark kiểm tra ở hai lớp:
+
+* **So với `Arrays.sort`:** `Arrays.sort` là hàm sắp xếp có sẵn của Java, đã được kiểm thử kỹ, nên được dùng làm đáp án chuẩn. Ở vòng warm-up đầu tiên, kết quả của `MergeSortCutOff` được so từng phần tử với đáp án, cho mọi CUTOFF trên mọi file dữ liệu (26 × 20 = 520 tổ hợp). Việc này diễn ra trước các lần đo chính thức.
+* **Kiểm tra mảng đã có thứ tự (`isSorted`):** sau mỗi lần đo, chương trình duyệt mảng được sao chép cuối cùng vừa được sắp xếp để kiểm tra các phần tử theo thứ tự tăng dần
+
+Cần cả hai lớp vì `isSorted` chỉ kiểm tra thứ tự, không phát hiện được phần tử bị mất hay bị nhân đôi: nếu một lỗi biến mảng `[5, 3, 8, 1]` thành `[1, 1, 1, 1]`, mảng vẫn "đã sắp xếp" nhưng sai hoàn toàn. Phép so với `Arrays.sort` bắt được lỗi này nhưng tốn thời gian hơn, nên chỉ chạy một lần cho mỗi tổ hợp; `isSorted` là chốt chặn rẻ cho mọi lần đo còn lại.
+
+Nếu phát hiện sai, chương trình dừng ngay và báo CUTOFF nào cho kết quả sai, thay vì âm thầm ghi số liệu sai vào `raw.csv`.
+
+**Code minh họa:** So với `Arrays.sort` ở vòng warm-up đầu:
+
+```java
+Integer[] expected = base.clone();
+Arrays.sort(expected);  // Phần ra kết quả chuẩn. 
+
+for (int round = 0; round < warmupRounds; round++) {
+    for (int cutoff : CUTOFFS) {
+        timeOnce(base, work, cutoff);
+        if (round == 0 && !Arrays.equals(work[0], expected)) {
+            throw new IllegalStateException("Ket qua SAI voi cutoff=" + cutoff);
+        }
+    }
+}
+```
+
+Kiểm tra thứ tự sau mỗi lần đo, trong hàm `timeOnce`:
+
+```java
+long elapsed = System.nanoTime() - start; // Dừng đồng hồ đo trước 
+if (!isSorted(work[work.length - 1])) {
+    throw new IllegalStateException("Mang chua duoc sap xep voi cutoff = " + cutoff);
+}
+```
+
+**Kết quả:** Thí nghiệm chính chạy trọn vẹn đến bảng tổng kết mà không bị dừng, nghĩa là kết quả của `MergeSortCutOff` khớp với `Arrays.sort` trên toàn bộ dữ liệu thí nghiệm.
+
+**Thí nghiệm minh họa: nếu cài đặt có lỗi thì sao?** Để thấy vì sao không thể chỉ nhìn thời gian mà biết cài đặt đúng hay sai, một bản lỗi được tạo từ chính `MergeSortCutOff.java`, chỉ khác một dòng: thêm `if (true) return;` vào đầu `insertionSort`, khiến hàm thoát ngay mà không sắp xếp gì. Kết quả đo trên 10.000 số ngẫu nhiên:
+
+| CUTOFF | Bản đúng (ms) | Bản lỗi (ms) | Bản lỗi sắp xếp đúng? |
+|---|---|---|---|
+| 1 | 1,432 | 1,358 | ĐÚNG |
+| 4 | 1,372 | 1,092 | SAI |
+| 7 | 1,291 | 0,890 | SAI |
+| 10 | 1,243 | 0,718 | SAI |
+| 16 | 1,248 | 0,714 | SAI |
+| 32 | 1,224 | 0,584 | SAI |
+| 64 | 1,289 | 0,486 | SAI |
+
+* Bản lỗi nhanh dần khi CUTOFF tăng, đến CUTOFF 64 nhanh gấp khoảng 2,7 lần bản đúng, vì càng nhiều đoạn con được giao cho một hàm không làm gì. Nếu không kiểm tra tính đúng, đồ thị sẽ dẫn tới kết luận sai rằng CUTOFF càng lớn càng tốt.
+* Ở CUTOFF = 1, bản lỗi vẫn cho kết quả đúng: các đoạn con dài 1 đã được điều kiện `if (cuoi <= dau) return;` xử lý trước, nên `insertionSort` không bao giờ được gọi và lỗi bị che. Vì vậy cần kiểm tra ở mọi giá trị CUTOFF, không chỉ một.
+* `isSorted` phát hiện bản lỗi ở tất cả các CUTOFF đã thử, trừ CUTOFF = 1, nên `Benchmark` sẽ dừng ngay nếu gặp cài đặt này.
+
+Cách tạo bản lỗi và chạy thí nghiệm minh họa xem Phụ lục B.
 
 **g. Dùng trung vị làm số liệu chính; chỉ số so sánh là `ratio = median(CUTOFF) / median(CUTOFF = 1)`.**
 
@@ -203,6 +292,8 @@ Tỉ số thời gian khi N tăng 10 lần (CUTOFF = 10), so với tỉ số lý
 
 ## Phụ lục
 
+## Phụ lục
+
 ### Phụ lục A. Thí nghiệm đối chứng cho mục 4.3d
 
 **Mục đích.** Kiểm tra tác dụng của việc gộp nhiều bản sao trong một lần bấm giờ, bằng cách đo lại khi mỗi lần bấm giờ chỉ sắp xếp một mảng.
@@ -234,9 +325,32 @@ def cv(path):
     return out
 ```
 
-Dùng tỉ lệ thay vì độ lệch chuẩn tuyệt đối để so sánh được giữa các kích thước N khác nhau (độ lệch 0,1 ms là rất lớn với N = 1.000 nhưng không đáng kể với N = 10.000). Mã nguồn đầy đủ: `compare.py`; số liệu thô: `results_single/`.
+Dùng tỉ lệ thay vì độ lệch chuẩn tuyệt đối để so sánh được giữa các kích thước N khác nhau: cùng một độ lệch 0,1 ms còn lớn hơn cả thời gian một lần sắp xếp với N = 1.000 (khoảng 0,08 ms), nhưng chỉ bằng khoảng 7% thời gian sắp xếp với N = 10.000 (khoảng 1,4 ms). Mã nguồn đầy đủ: `compare.py`; số liệu thô: `results_single/`.
 
-### Phụ lục B. Danh mục tệp
+### Phụ lục B. Thí nghiệm minh họa cho mục 4.3f
+
+**Mục đích.** Cho thấy một cài đặt có lỗi logic vẫn chạy bình thường và vẫn cho ra thời gian đo, thậm chí còn nhanh hơn cài đặt đúng, nên không thể chỉ nhìn thời gian mà biết cài đặt đúng hay sai.
+
+**Cách tạo bản lỗi.** `brokendemo/BrokenSort.java` là bản sao của `MergeSortCutOff.java`, chỉ khác hai chỗ:
+
+1. Tên lớp đổi thành `BrokenSort`.
+2. Thêm một dòng vào đầu hàm `insertionSort`, khiến hàm thoát ngay mà không sắp xếp gì:
+   ```java
+   if (true) return;
+   ```
+
+**Cách đo.** `brokendemo/BrokenDemo.java` là chương trình chạy thí nghiệm. Nó gọi cả bản đúng (`MergeSortCutOff`) và bản lỗi (`BrokenSort`) trên cùng một mảng 10.000 số nguyên ngẫu nhiên (seed 1), với CUTOFF 1, 4, 7, 10, 16, 32, 64. Mỗi lần bấm giờ sắp xếp 20 bản sao; chạy bỏ 5 lần warm-up rồi lấy trung vị của 25 lần đo. Sau đó kiểm tra kết quả của bản lỗi bằng `isSorted`.
+
+**Cách chạy** (đứng ở thư mục project):
+
+```
+javac -d brokendemo/out MergeSortCutOff.java brokendemo/*.java
+java -cp brokendemo/out BrokenDemo
+```
+
+Tùy chọn `-d brokendemo/out` gom toàn bộ file `.class` vào một thư mục riêng, tách khỏi thí nghiệm chính. Kết quả xem bảng trong mục 4.3f.
+
+### Phụ lục C. Danh mục tệp
 
 | Loại | Tệp |
 |---|---|
@@ -244,8 +358,9 @@ Dùng tỉ lệ thay vì độ lệch chuẩn tuyệt đối để so sánh đư
 | Dữ liệu | `data/` (20 tệp, seed `20261116`) |
 | Kết quả thí nghiệm chính | `results/raw.csv`, `results/summary.csv`, `results/environment.txt`, `results/*.png` |
 | Kết quả đối chứng | `results_single/` |
+| Thí nghiệm minh họa | `brokendemo/BrokenSort.java`, `brokendemo/BrokenDemo.java` |
 | Hướng dẫn chạy lại | `README.md` |
 | Log trao đổi với AI | `ai-chat-log/` |
 
-### Phụ lục C. Sử dụng AI
+### Phụ lục D. Sử dụng AI
 - Sử dụng AI: (Các script đo, sinh dữ liệu và vẽ đồ thị được viết với sự hỗ trợ của AI; cài đặt mergesort do em tự viết từ slide bài giảng và bản Report được viết dưới sự hiểu biết về thí nghiệm của em). 

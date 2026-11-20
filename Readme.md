@@ -11,11 +11,10 @@ Báo cáo đầy đủ: [`Report.md`](Report.md).
 ├── MergeSortCutOff.java   Cài đặt mergesort + insertion sort (tự viết từ slide bài giảng)
 ├── Data.java              Sinh bộ dữ liệu thí nghiệm
 ├── Benchmark.java         Đo thời gian và thống kê
-├── plot.py                Vẽ đồ thị từ kết quả đo
-├── compare.py             So sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng
+├── plot.py                So sánh độ dao động giữa thí nghiệm chính và thí nghiệm đối chứng
 ├── data/                  20 file dữ liệu (5 kiểu × 4 kích thước)
 ├── results/               Kết quả thí nghiệm chính (CSV), cấu hình máy và đồ thị
-├── results_single/        Kết quả thí nghiệm đối chứng (không gộp bản sao)
+├── results_single/        Kết quả thí nghiệm đối chứng (không gộp. bản sao)
 └── Report.md             Báo cáo thí nghiệm
 ```
 
